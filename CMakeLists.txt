@@ -1,18 +1,13 @@
-cmake_minimum_required(VERSION 3.15)
-project(NBody_Lab1 LANGUAGES CXX)
+cmake_minimum_required(VERSION 3.18)
 
-set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -allow-unsupported-compiler")
 
-add_executable(nbody_sequential main.cpp)
+project(NBody_CUDA LANGUAGES CXX CUDA)
 
-if(MSVC)
-    # 1. Добавляем нужные оптимизации
-    target_compile_options(nbody_sequential PRIVATE /Ox /arch:AVX2 /GS-)
+set(CMAKE_CUDA_STANDARD 17)
+set(CMAKE_CUDA_STANDARD_REQUIRED ON)
 
-    # 2. Удаляем конфликтующий флаг /RTC1 из стандартных настроек Debug
-    string(REPLACE "/RTC1" "" CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG}")
-    # Устанавливаем обновленную строку флагов в текущем скоупе
-    set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG}")
-else()
-    target_compile_options(nbody_sequential PRIVATE -O3 -march=native -ffast-math)
-endif()
+add_executable(nbody_cuda kernel.cu
+        kernel.cu)
+
+set_target_properties(nbody_cuda PROPERTIES CUDA_ARCHITECTURES "native")
