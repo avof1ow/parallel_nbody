@@ -1,0 +1,3 @@
+C:/Users/Andrey/CLionProjects/NBody_Lab1/cmake-build-debug/CMakeFiles/nbody_cuda.dir
+C:/Users/Andrey/CLionProjects/NBody_Lab1/cmake-build-debug/CMakeFiles/edit_cache.dir
+C:/Users/Andrey/CLionProjects/NBody_Lab1/cmake-build-debug/CMakeFiles/rebuild_cache.dir

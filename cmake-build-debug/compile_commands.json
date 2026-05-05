@@ -1,0 +1,8 @@
+[
+{
+  "directory": "C:/Users/Andrey/CLionProjects/NBody_Lab1/cmake-build-debug",
+  "command": "C:\\PROGRA~1\\NVIDIA~2\\CUDA\\v13.0\\bin\\nvcc.exe -forward-unknown-to-host-compiler -D_WINDOWS -Xcompiler=\" /GR /EHsc\" -allow-unsupported-compiler -Xcompiler=\" -Zi -Ob0 -Od /RTC1\" -std=c++17 -arch=native -Xcompiler=-MDd -x cu -c C:\\Users\\Andrey\\CLionProjects\\NBody_Lab1\\kernel.cu -o CMakeFiles\\nbody_cuda.dir\\kernel.cu.obj -Xcompiler=-FdCMakeFiles\\nbody_cuda.dir\\,-FS",
+  "file": "C:/Users/Andrey/CLionProjects/NBody_Lab1/kernel.cu",
+  "output": "C:/Users/Andrey/CLionProjects/NBody_Lab1/cmake-build-debug/CMakeFiles/nbody_cuda.dir/kernel.cu.obj"
+}
+]
