@@ -1,7 +1,7 @@
+#include <mpi.h>
 #include <iostream>
 #include <vector>
 #include <cmath>
-#include <chrono>
 #include <fstream>
 #include <iomanip>
 
@@ -16,61 +16,82 @@ void init_bodies(std::vector<Body>& bodies, int n) {
     }
 }
 
-void save_state(const std::string& filename, const std::vector<Body>& bodies) {
-    std::ofstream out(filename);
-    for (const auto& b : bodies)
-        out << b.x << " " << b.y << " " << b.z << " " << b.vx << " " << b.vy << " " << b.vz << " " << b.mass << "\n";
-}
+int main(int argc, char** argv) {
+    MPI_Init(&argc, &argv);
 
-int main() {
-    std::vector<int> sizes = {200, 400, 800, 1200, 1600, 2000};
+    int rank, size;
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    MPI_Comm_size(MPI_COMM_WORLD, &size);
+
     const float G = 6.674e-11f;
     const float dt = 0.01f;
+    std::vector<int> sizes = {200, 400, 800, 1200, 1600, 2000};
 
-    std::ofstream report("benchmark_results.csv");
-    report << "Size,Threads,Time_sec\n"; // Threads всегда 1 для этой лабы
+    std::ofstream report;
+    if (rank == 0) {
+        report.open("benchmark_results_mpi.csv", std::ios::app);
+
+        std::ifstream check_file("benchmark_results_mpi.csv");
+        check_file.seekg(0, std::ios::end);
+        if (check_file.tellg() <= 5) {
+            report << "Size,Processes,Time_sec\n";
+        }
+
+        std::cout << "=== MPI N-Body Simulation ===" << std::endl;
+        std::cout << "Processes: " << size << std::endl;
+    }
 
     for (int n : sizes) {
-        std::vector<Body> bodies(n);
-        init_bodies(bodies, n);
+        if (n % size != 0) continue;
 
-        if (n == 2000) save_state("initial_state.txt", bodies);
+        int local_n = n / size;
+        std::vector<Body> all_bodies(n);
+        std::vector<Body> local_bodies(local_n);
 
-        auto start = std::chrono::high_resolution_clock::now();
+        if (rank == 0) init_bodies(all_bodies, n);
 
-        // Расчет взаимодействий
-        for (int i = 0; i < n; ++i) {
+        MPI_Bcast(all_bodies.data(), n * (int)sizeof(Body), MPI_BYTE, 0, MPI_COMM_WORLD);
+
+        double start = MPI_Wtime();
+
+        for (int i = 0; i < local_n; ++i) {
+            int global_i = rank * local_n + i;
             float fx = 0, fy = 0, fz = 0;
             for (int j = 0; j < n; ++j) {
-                if (i == j) continue;
-                float dx = bodies[j].x - bodies[i].x;
-                float dy = bodies[j].y - bodies[i].y;
-                float dz = bodies[j].z - bodies[i].z;
+                if (global_i == j) continue;
+                float dx = all_bodies[j].x - all_bodies[global_i].x;
+                float dy = all_bodies[j].y - all_bodies[global_i].y;
+                float dz = all_bodies[j].z - all_bodies[global_i].z;
                 float distSq = dx*dx + dy*dy + dz*dz + 1e-4f;
                 float invDist3 = 1.0f / (distSq * sqrtf(distSq));
-                float s = bodies[j].mass * invDist3;
+
+                float s = all_bodies[j].mass * invDist3;
+
                 fx += dx * s; fy += dy * s; fz += dz * s;
             }
-            bodies[i].vx += dt * G * fx;
-            bodies[i].vy += dt * G * fy;
-            bodies[i].vz += dt * G * fz;
+            local_bodies[i] = all_bodies[global_i];
+            local_bodies[i].vx += dt * G * fx;
+            local_bodies[i].vy += dt * G * fy;
+            local_bodies[i].vz += dt * G * fz;
+            local_bodies[i].x += local_bodies[i].vx * dt;
+            local_bodies[i].y += local_bodies[i].vy * dt;
+            local_bodies[i].z += local_bodies[i].vz * dt;
         }
 
-        for (int i = 0; i < n; ++i) {
-            bodies[i].x += bodies[i].vx * dt;
-            bodies[i].y += bodies[i].vy * dt;
-            bodies[i].z += bodies[i].vz * dt;
+        MPI_Allgather(local_bodies.data(), local_n * (int)sizeof(Body), MPI_BYTE,
+                      all_bodies.data(), local_n * (int)sizeof(Body), MPI_BYTE,
+                      MPI_COMM_WORLD);
+
+        double end = MPI_Wtime();
+
+        if (rank == 0) {
+            double duration = end - start;
+            std::cout << "N: " << std::setw(4) << n << " | Time: " << std::fixed << std::setprecision(6) << duration << "s" << std::endl;
+            report << n << "," << size << "," << duration << "\n";
         }
-
-        auto end = std::chrono::high_resolution_clock::now();
-        double duration = std::chrono::duration<double>(end - start).count();
-
-        std::cout << "Size: " << n << " | Time: " << duration << "s\n";
-
-        report << n << ",1," << std::fixed << std::setprecision(6) << duration << "\n";
-
-        if (n == 2000) save_state("final_state.txt", bodies);
     }
-    report.close();
+
+    if (rank == 0) report.close();
+    MPI_Finalize();
     return 0;
 }
